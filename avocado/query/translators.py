@@ -6,8 +6,8 @@ from modeltree.tree import trees
 from avocado.core import loader
 from avocado.conf import settings
 from avocado.core.utils import get_form_class
+from avocado.query.oldparsers.datacontext import or_queries, and_queries, negate_query
 from .operators import registry as operators
-
 
 OPERATORS = settings.OPERATORS
 INTERNAL_DATATYPE_FORMFIELDS = settings.INTERNAL_DATATYPE_FORMFIELDS
@@ -57,8 +57,7 @@ class Translator(object):
         allowed_operators = self.get_operators(field)
 
         # Special case for fields that are nullable
-        if field.field.null:
-            allowed_operators += ('isnull', '-isnull')
+        allowed_operators += ('isnull', '-isnull')
 
         # If uid is None, the default operator will be used
         uid = uid or allowed_operators[0]
@@ -74,7 +73,6 @@ class Translator(object):
         if operator.uid not in allowed_operators:
             raise ValidationError(u'Operator "{0}" cannot be used for '
                                   'this translator'.format(operator))
-
         return operator
 
     def _validate_value(self, field, value, **kwargs):
@@ -148,7 +146,7 @@ class Translator(object):
         """
 
         return tree.query_condition(field.model._meta.pk, 'isnull', False,
-                                    model=field.model)
+                                    model=field.model, field_type=field.type)
 
     def _condition(self, field, operator, value, tree):
         """Builds a `Q` object for `field` relative to `tree`.
@@ -186,7 +184,7 @@ class Translator(object):
             if value is not None:
                 condition = \
                     tree.query_condition(field.field, operator.lookup, value,
-                                         model=field.model)
+                                         model=field.model, field_type=field.type)
 
             # Reset value to None for `null` processing
             value = None
@@ -199,20 +197,19 @@ class Translator(object):
                 value = True
             # Read the _get_not_null_pk docs for more info
             null_condition = tree.query_condition(field.field, 'isnull', value,
-                                                  model=field.model)
+                                                  model=field.model, field_type=field.type)
 
             if field.model is not tree.root_model:
-                null_condition = null_condition & \
-                    self._get_not_null_pk(field, tree)
+                null_condition = and_queries(null_condition, self._get_not_null_pk(field, tree))
 
             # Tack on to the existing condition if one is defined
             if condition is not None:
-                condition = condition | null_condition
+                condition = or_queries(condition, null_condition)
             else:
                 condition = null_condition
 
         if operator.negated:
-            return ~condition
+            return negate_query(condition)
         return condition
 
     def _normalize_value(self, field, value):
@@ -243,7 +240,6 @@ class Translator(object):
         if not operator.is_valid(_value):
             raise ValidationError(u'"{0}" is not valid for the operator '
                                   '"{1}"'.format(value, operator))
-
         return operator, value
 
     def language(self, field, operator, value, **kwargs):

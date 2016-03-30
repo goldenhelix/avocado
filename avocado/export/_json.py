@@ -20,6 +20,13 @@ class JSONExporter(BaseExporter):
 
     preferred_formats = ('json',)
 
+    def generator(self, iterable, *args, **kwargs):
+
+        encoder = JSONGeneratorEncoder()
+
+        for chunk in encoder.iterencode(self.read(iterable, *args, **kwargs)):
+            yield chunk
+
     def write(self, iterable, buff=None, *args, **kwargs):
         buff = self.get_file_obj(buff)
 

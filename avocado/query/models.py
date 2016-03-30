@@ -74,11 +74,11 @@ class AbstractDataContext(models.Model):
         "Returns a parsed node for this context."
         return parsers.datacontext.parse(self.json, tree=tree, **context)
 
-    def apply(self, queryset=None, tree=None, **context):
+    def apply(self, queryset=None, tree=None, distinct=False, **context):
         "Applies this context to a QuerySet."
         if tree is None and queryset is not None:
             tree = queryset.model
-        return self.parse(tree=tree, **context).apply(queryset=queryset)
+        return self.parse(tree=tree, **context).apply(queryset=queryset, distinct=False)
 
     def language(self, tree=None, **context):
         return self.parse(tree=tree, **context).language
@@ -215,11 +215,13 @@ class AbstractDataQuery(models.Model):
         }
         return parsers.dataquery.parse(json, tree=tree, **context)
 
-    def apply(self, queryset=None, tree=None, distinct=True, include_pk=True,
+    def apply(self, queryset=None, tree=None, distinct=False, include_pk=True,
               **context):
         "Applies this context to a QuerySet."
         if tree is None and queryset is not None:
             tree = queryset.model
+        if tree is None:
+            tree = self.tree
         return self.parse(tree=tree, **context) \
             .apply(queryset=queryset, distinct=distinct, include_pk=include_pk)
 

@@ -29,9 +29,13 @@ class Registry(object):
         return True
 
     def __contains__(self, key):
+        if type(key) is list:
+            key = key[0]
         return key in self._registry
 
     def __getitem__(self, key):
+        if type(key) is list:
+            key = key[0]
         return self._registry.get(key, self.default)
 
     def get(self, name):

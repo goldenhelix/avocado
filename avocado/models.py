@@ -28,19 +28,17 @@ from avocado.query.operators import registry as operators
 from avocado.lexicon.models import Lexicon
 from avocado.stats.agg import Aggregator
 from avocado import formatters
-
+from ceviche.models import custom_fields
 
 __all__ = ('DataCategory', 'DataConcept', 'DataField',
            'DataContext', 'DataView', 'DataQuery')
 
 log = logging.getLogger(__name__)
 
-
 ident_re = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*$')
 validate_ident = RegexValidator(ident_re, _("Enter an 'identifier' that is a "
                                 "valid Python variable name."),
                                 'invalid')
-
 
 def is_lexicon(f):
     """Returns true if the model is a subclass of Lexicon and this
@@ -168,6 +166,8 @@ class DataField(BasePlural, PublishArchiveMixin):
     # This should be used to simply hide _access_ to the concepts.
     sites = models.ManyToManyField(Site, blank=True, related_name='fields+')
 
+    model_version_id = models.IntegerField(null=True)
+
     # The order of this datafield with respect to the category (if defined).
     order = models.FloatField(null=True, blank=True, db_column='_order')
 
@@ -175,11 +175,15 @@ class DataField(BasePlural, PublishArchiveMixin):
                                    'internal use and does not abide by the '
                                    'published and archived rules.')
 
+    allowed_values = custom_fields.TextArrayField(null=True, blank=True)
+
+    is_html = models.BooleanField(default=False)
+
     objects = managers.DataFieldManager()
 
     class Meta(object):
         unique_together = ('app_name', 'model_name', 'field_name')
-        ordering = ('category__order', 'category__name', 'order', 'name')
+        #ordering = ('category__order', 'category__name', 'order', 'name')
         permissions = (
             ('view_datafield', 'Can view datafield'),
         )
@@ -411,7 +415,7 @@ class DataField(BasePlural, PublishArchiveMixin):
         By default, it will use the field's internal type, but can be
         overridden by the ``SIMPLE_TYPE_MAP`` setting.
         """
-        return utils.get_simple_type(self.field)
+        return utils.get_simple_type(self.type)
 
     @property
     def searchable(self):
@@ -553,8 +557,14 @@ class DataField(BasePlural, PublishArchiveMixin):
 
     def value_labels(self, queryset=None):
         "Returns a distinct set of value/label pairs for this field."
-        return ChoicesDict(zip(
-            self.values(queryset=queryset), self.labels(queryset=queryset)))
+        if self.type=='Boolean':
+            d = ChoicesDict(zip([True, False], ['True', 'False']))
+            return d
+        if self.allowed_values:
+            d = ChoicesDict(zip(self.allowed_values, self.allowed_values))
+            return d
+        else:
+            return ChoicesDict(zip(self.values(queryset=queryset), self.labels(queryset=queryset)))
 
     def coded_labels(self, queryset=None):
         "Returns a distinct set of code/label pairs for this field."
@@ -667,13 +677,25 @@ class DataField(BasePlural, PublishArchiveMixin):
         return [(x, operators[x].verbose_name) for x
                 in trans.get_operators(self)]
 
+    def get_tree(self):
+        tree = 'projectsample'
+        if self.model_name.startswith('p_') or self.model_name.startswith('r_'):
+            tree = self.model_name
+        elif self.model_name=='samplerecordschema':
+            tree = 'projectsample'
+        return tree
+
     def translate(self, operator=None, value=None, tree=None, **context):
         "Convenince method for performing a translation on a query condition."
+        if not tree:
+            tree = self.get_tree()
         trans = translators[self.translator]
         return trans.translate(self, operator, value, tree, **context)
 
     def validate(self, operator=None, value=None, tree=None, **context):
         "Convenince method for performing a translation on a query condition."
+        if not tree:
+            tree = self.get_tree()
         trans = translators[self.translator]
         return trans.validate(self, operator, value, tree, **context)
 
@@ -757,6 +779,14 @@ class DataConcept(BasePlural, PublishArchiveMixin):
     # with this concept from the Haystack index.
     indexable = models.BooleanField(default=True)
 
+    is_default = models.BooleanField(default=False)
+
+    use_in_annotations = models.BooleanField(default=False)
+
+    model_version_id = models.IntegerField(null=True)
+
+    model_type = models.TextField(null=True)
+
     objects = managers.DataConceptManager()
 
     def format(self, *args, **kwargs):
@@ -776,7 +806,7 @@ class DataConcept(BasePlural, PublishArchiveMixin):
 
     class Meta(object):
         app_label = 'avocado'
-        ordering = ('category__order', 'category__name', 'order', 'name')
+        #ordering = ('category__order', 'category__name', 'order', 'name')
         permissions = (
             ('view_dataconcept', 'Can view dataconcept'),
         )
@@ -818,6 +848,7 @@ class DataContext(AbstractDataContext, Base):
 
     This corresponds to the `WHERE` statements in a SQL query.
     """
+    
     session = models.BooleanField(default=False)
     template = models.BooleanField(default=False)
     default = models.BooleanField(default=False)
@@ -831,6 +862,8 @@ class DataContext(AbstractDataContext, Base):
     user = models.ForeignKey(User, null=True, blank=True,
                              related_name='datacontext+')
     session_key = models.CharField(max_length=40, null=True, blank=True)
+    
+    model_version_id = models.IntegerField(null=True)
 
     accessed = models.DateTimeField(default=datetime.now(), editable=False)
     objects = managers.DataContextManager()
@@ -897,6 +930,8 @@ class DataView(AbstractDataView, Base):
     user = models.ForeignKey(User, null=True, blank=True,
                              related_name='dataview+')
     session_key = models.CharField(max_length=40, null=True, blank=True)
+
+    model_version_id = models.IntegerField(null=True)
 
     accessed = models.DateTimeField(default=datetime.now(), editable=False)
     objects = managers.DataViewManager()

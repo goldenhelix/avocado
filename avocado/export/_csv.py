@@ -15,8 +15,10 @@ class UnicodeWriter(object):
         self.writer = csv.writer(f, dialect, *args, **kwds)
 
     def writerow(self, row):
-        self.writer.writerow(
-            [s.encode("utf-8") if 'encode' in dir(s) else s for s in row])
+        self.writer.writerow([s.encode("utf-8") if 'encode' in dir(s) else s for s in row])
+
+    def row_to_str(self, row):
+        return ','.join([s.encode("utf-8").replace(',',';') if 'encode' in dir(s) else s for s in row])
 
     def writerows(self, rows):
         for row in rows:
@@ -31,6 +33,25 @@ class CSVExporter(BaseExporter):
     content_type = 'text/csv'
 
     preferred_formats = ('csv', 'string')
+
+    def generator(self, iterable, *args, **kwargs):
+        header = []
+        buff = self.get_file_obj(None)
+        writer = UnicodeWriter(buff, quoting=csv.QUOTE_MINIMAL)
+
+        for i, row_gen in enumerate(self.read(iterable, *args, **kwargs)):
+            row = []
+
+            for data in row_gen:
+                if i == 0:
+                    header.extend(data.keys())
+
+                row.extend(data.values())
+
+            if i == 0:
+                yield writer.row_to_str(header) + '\n'
+
+            yield writer.row_to_str([str(s) for s in row]) + '\n'
 
     def write(self, iterable, buff=None, *args, **kwargs):
         header = []

@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 # This is intended to be strictly for testing purposes
 FORCE_SYNC_LOG = getattr(settings, 'FORCE_SYNC_LOG', False)
+LOG_USAGE = getattr(settings, 'LOG_USAGE', False)
 
 
 def _log(instance=None, model=None, **kwargs):
@@ -37,21 +38,22 @@ def log(event, async=True, **kwargs):
     By default the call will be executed in a thread to not block the current
     executing thread.
     """
-    kwargs['event'] = event
+    if LOG_USAGE:
+        kwargs['event'] = event
 
-    if 'request' in kwargs:
-        request = kwargs.pop('request')
-        if hasattr(request, 'user') and request.user.is_authenticated():
-            kwargs['user'] = request.user
-        if hasattr(request, 'session'):
-            kwargs['session_key'] = request.session.session_key
+        if 'request' in kwargs:
+            request = kwargs.pop('request')
+            if hasattr(request, 'user') and request.user.is_authenticated():
+                kwargs['user'] = request.user
+            if hasattr(request, 'session'):
+                kwargs['session_key'] = request.session.session_key
 
-    # Set the timestamp now to prevent delay due to a blocked thread
-    if 'timestamp' not in kwargs:
-        kwargs['timestamp'] = datetime.now()
+        # Set the timestamp now to prevent delay due to a blocked thread
+        if 'timestamp' not in kwargs:
+            kwargs['timestamp'] = datetime.now()
 
-    if async and not FORCE_SYNC_LOG:
-        thread = Thread(target=_log, kwargs=kwargs)
-        thread.start()
-    else:
-        _log(**kwargs)
+        if async and not FORCE_SYNC_LOG:
+            thread = Thread(target=_log, kwargs=kwargs)
+            thread.start()
+        else:
+            _log(**kwargs)

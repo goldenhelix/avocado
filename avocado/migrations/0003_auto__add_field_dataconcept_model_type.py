@@ -1,22 +1,23 @@
 # -*- coding: utf-8 -*-
-from south.utils import datetime_utils as datetime
+import datetime
 from south.db import db
-from south.v2 import DataMigration
+from south.v2 import SchemaMigration
 from django.db import models
-from avocado.models import DataField
 
-class Migration(DataMigration):
+
+class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        for field in DataField.objects.all():
-            field.indexable = field.enumerable or field.searchable
-            field.save()
+        # Adding field 'DataConcept.model_type'
+        db.add_column(u'avocado_dataconcept', 'model_type',
+                      self.gf('django.db.models.fields.TextField')(null=True),
+                      keep_default=False)
+
 
     def backwards(self, orm):
-        # There is nothing to do here because the indexable field should not
-        # modify enumerable or searchable even though those are used to
-        # initially set indexable.
-        pass
+        # Deleting field 'DataConcept.model_type'
+        db.delete_column(u'avocado_dataconcept', 'model_type')
+
 
     models = {
         u'auth.group': {
@@ -36,17 +37,17 @@ class Migration(DataMigration):
             'Meta': {'object_name': 'User'},
             'date_joined': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
             'email': ('django.db.models.fields.EmailField', [], {'max_length': '75', 'blank': 'True'}),
-            'first_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
+            'first_name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'groups': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Group']", 'symmetrical': 'False', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'is_active': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'is_staff': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'is_superuser': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'last_login': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime.now'}),
-            'last_name': ('django.db.models.fields.CharField', [], {'max_length': '30', 'blank': 'True'}),
+            'last_name': ('django.db.models.fields.CharField', [], {'max_length': '255', 'blank': 'True'}),
             'password': ('django.db.models.fields.CharField', [], {'max_length': '128'}),
             'user_permissions': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['auth.Permission']", 'symmetrical': 'False', 'blank': 'True'}),
-            'username': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '30'})
+            'username': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'})
         },
         u'avocado.datacategory': {
             'Meta': {'ordering': "('parent__order', 'parent__name', 'order', 'name')", 'object_name': 'DataCategory'},
@@ -54,7 +55,7 @@ class Migration(DataMigration):
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'description': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'order': ('django.db.models.fields.FloatField', [], {'null': 'True', 'db_column': "'_order'", 'blank': 'True'}),
@@ -62,7 +63,7 @@ class Migration(DataMigration):
             'published': ('django.db.models.fields.BooleanField', [], {'default': 'False'})
         },
         'avocado.dataconcept': {
-            'Meta': {'ordering': "('category__order', 'category__name', 'order', 'name')", 'object_name': 'DataConcept'},
+            'Meta': {'object_name': 'DataConcept'},
             'archived': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'category': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['avocado.DataCategory']", 'null': 'True', 'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
@@ -74,7 +75,10 @@ class Migration(DataMigration):
             'ident': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
             'indexable': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'internal': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'is_default': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
+            'model_type': ('django.db.models.fields.TextField', [], {'null': 'True'}),
+            'model_version_id': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'name_plural': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
@@ -84,6 +88,7 @@ class Migration(DataMigration):
             'sites': ('django.db.models.fields.related.ManyToManyField', [], {'symmetrical': 'False', 'related_name': "'concepts+'", 'blank': 'True', 'to': u"orm['sites.Site']"}),
             'sortable': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'type': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'use_in_annotations': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'viewable': ('django.db.models.fields.BooleanField', [], {'default': 'True'})
         },
         u'avocado.dataconceptfield': {
@@ -99,14 +104,15 @@ class Migration(DataMigration):
         },
         u'avocado.datacontext': {
             'Meta': {'object_name': 'DataContext'},
-            'accessed': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2014, 9, 19, 0, 0)'}),
+            'accessed': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2016, 3, 29, 0, 0)'}),
             'count': ('django.db.models.fields.IntegerField', [], {'null': 'True', 'db_column': "'_count'"}),
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'default': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'description': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'json': ('jsonfield.fields.JSONField', [], {'default': '{}', 'null': 'True', 'blank': 'True'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
+            'model_version_id': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'parent': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'forks'", 'null': 'True', 'to': u"orm['avocado.DataContext']"}),
@@ -117,7 +123,8 @@ class Migration(DataMigration):
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'datacontext+'", 'null': 'True', 'to': u"orm['auth.User']"})
         },
         u'avocado.datafield': {
-            'Meta': {'ordering': "('category__order', 'category__name', 'order', 'name')", 'unique_together': "(('app_name', 'model_name', 'field_name'),)", 'object_name': 'DataField'},
+            'Meta': {'unique_together': "(('app_name', 'model_name', 'field_name'),)", 'object_name': 'DataField'},
+            'allowed_values': ('ceviche.models.custom_fields.TextArrayField', [], {'null': 'True', 'blank': 'True'}),
             'app_name': ('django.db.models.fields.CharField', [], {'max_length': '200'}),
             'archived': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'category': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['avocado.DataCategory']", 'null': 'True', 'blank': 'True'}),
@@ -131,9 +138,11 @@ class Migration(DataMigration):
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'indexable': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'internal': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'is_html': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'label_field_name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'model_name': ('django.db.models.fields.CharField', [], {'max_length': '200'}),
+            'model_version_id': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'name_plural': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
@@ -156,7 +165,7 @@ class Migration(DataMigration):
             'description': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'distinct_count': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'parent': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'forks'", 'null': 'True', 'to': u"orm['avocado.DataQuery']"}),
@@ -172,13 +181,14 @@ class Migration(DataMigration):
         },
         u'avocado.dataview': {
             'Meta': {'object_name': 'DataView'},
-            'accessed': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2014, 9, 19, 0, 0)'}),
+            'accessed': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2016, 3, 29, 0, 0)'}),
             'created': ('django.db.models.fields.DateTimeField', [], {'auto_now_add': 'True', 'blank': 'True'}),
             'default': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'description': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'json': ('jsonfield.fields.JSONField', [], {'default': '{}', 'null': 'True', 'blank': 'True'}),
-            'keywords': ('django.db.models.fields.CharField', [], {'max_length': '100', 'null': 'True', 'blank': 'True'}),
+            'keywords': ('django.db.models.fields.TextField', [], {'null': 'True', 'blank': 'True'}),
+            'model_version_id': ('django.db.models.fields.IntegerField', [], {'null': 'True'}),
             'modified': ('django.db.models.fields.DateTimeField', [], {'auto_now': 'True', 'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'max_length': '200', 'null': 'True', 'blank': 'True'}),
             'parent': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'forks'", 'null': 'True', 'to': u"orm['avocado.DataView']"}),
@@ -215,4 +225,3 @@ class Migration(DataMigration):
     }
 
     complete_apps = ['avocado']
-    symmetrical = True

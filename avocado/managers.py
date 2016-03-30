@@ -8,9 +8,7 @@ from django.db.models.manager import ManagerDescriptor
 from avocado.conf import OPTIONAL_DEPS, requires_dep, settings
 from avocado.core.managers import PublishedManager, PublishedQuerySet
 
-
 logger = logging.getLogger(__name__)
-
 
 class DataSearchMixin(models.Manager):
     @requires_dep('haystack')
@@ -46,7 +44,7 @@ class DataSearchMixin(models.Manager):
 
 
 class DataFieldQuerySet(PublishedQuerySet):
-    def published(self, user=None, perm='avocado.view_datafield'):
+    def published(self, user=None, perm='avocado.view_datafield', model_version_id=None):
         """Fields can be restricted to one or more sites, so the published
         method is extended to support filtering by site.
         """
@@ -59,6 +57,11 @@ class DataFieldQuerySet(PublishedQuerySet):
         # (or no site)
         sites = Q(sites=None) | Q(sites__id=djsettings.SITE_ID)
         published = published.filter(sites)
+
+        if model_version_id:
+            model_versions = Q(model_version_id=None) | Q(model_version_id=model_version_id) 
+            
+            published = published.filter(model_versions)
 
         if user and settings.PERMISSIONS_ENABLED is not False:
             if OPTIONAL_DEPS['guardian']:
@@ -73,7 +76,7 @@ class DataFieldQuerySet(PublishedQuerySet):
 
 
 class DataConceptQuerySet(PublishedQuerySet):
-    def published(self, user=None, perm='avocado.view_datafield'):
+    def published(self, user=None, perm='avocado.view_datafield', model_version_id=None):
         """Concepts can be restricted to one or more sites, so the published
         method is extended to support filtering by site. In addition, concepts
         should not be visible if their associated fields are not all available.
@@ -87,6 +90,7 @@ class DataConceptQuerySet(PublishedQuerySet):
 
         # All published concepts associated with the current site
         # (or no site)
+
         sites = Q(sites=None) | Q(sites__id=djsettings.SITE_ID)
         published = published.filter(sites)
 
@@ -100,6 +104,10 @@ class DataConceptQuerySet(PublishedQuerySet):
         from avocado.models import DataField
 
         fields_q = Q(archived=True) | Q(published=False)
+        
+        # concepts are hidden if they meet these criteria
+        if model_version_id:
+            fields_q = fields_q | ~Q(model_version_id=model_version_id)
 
         if user and settings.PERMISSIONS_ENABLED is not False:
             if OPTIONAL_DEPS['guardian']:

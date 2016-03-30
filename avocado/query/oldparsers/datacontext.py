@@ -4,7 +4,12 @@ from avocado.core import utils
 from modeltree.tree import trees
 from django.db.models.query import QuerySet
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.db.backends.postgresql_psycopg2.base import DatabaseWrapper
 from django.utils.encoding import smart_unicode
+from django.db.models.query_utils import Q
+from django.db.models import Model
+from django.db.models.fields.related import ForeignKey
+from django.db.models.sql.constants import JoinInfo
 
 AND = 'AND'
 OR = 'OR'
@@ -40,6 +45,55 @@ def is_composite(obj):
         return True
 
 
+def or_queries(q1, q2):
+    if isinstance(q1, dict) and isinstance(q2, dict):
+        models = q1['models'] + q2['models']
+        query =  '(' + q1['query'] + ' OR ' + q2['query'] + ')'
+        return {'models':models, 'query':query}
+    else:
+        return q1 | q2
+
+def and_queries(q1, q2):
+    if isinstance(q1, dict) and isinstance(q2, dict):
+        models = q1['models'] + q2['models']
+        query =  '(' + q1['query'] + ' AND ' + q2['query'] + ')'
+        return {'models':models, 'query':query}
+    else:
+        return q1 & q2
+
+def negate_query(q):
+    if isinstance(q, dict):
+        return {'models':q['models'], 'query':'NOT (' + q + ')' }
+    else:
+        return ~q
+
+def get_foreign_keys(model):
+    model = model.__dict__
+    foreign_keys = []
+    for attr in model:
+        try:
+            attribute = model[attr].__dict__
+            if 'field' in attribute:
+                if type(attribute['field'].related.field)==ForeignKey:
+                    foreign_keys.append(attribute['field'].related.__dict__)
+        except:
+            pass
+
+    return foreign_keys
+
+def get_primary_key(model):
+    model = model.__dict__
+    for attr in model:
+        try:
+            attribute = model[attr].__dict__
+            if 'field' in attribute:
+                if attribute['field'].related.parent_model==attribute['field'].related.model:
+                    return attribute['field'].related.field.__name__
+        except:
+            pass
+
+    return '_id'
+
 class Node(object):
     condition = None
     annotations = None
@@ -50,13 +104,48 @@ class Node(object):
         self.tree = tree
         self.context = context
 
+    def add_joins(self, queryset):
+        if isinstance(self.tree, basestring):
+            primary_table = self.tree
+        else:
+            primary_table = self.tree.__name__
+        tables = []
+        joins = []
+        model_names = [model.__name__ for model in self.condition['models']]
+        for model in self.condition['models']:
+            model_class = model
+            table = model_class._meta.db_table
+            if table not in tables and not model==primary_table:
+                tables.append(table)
+
+                
+                primary_key  = get_primary_key(model_class)
+                foreign_keys = get_foreign_keys(model_class)
+                for fkey in foreign_keys:
+                    foreign = fkey['parent_model']._meta.db_table
+
+                    # if foreign key joins to an included model
+                    if (foreign in model_names or foreign==primary_table) and not foreign==model:
+                        where = foreign + '.' + get_primary_key(fkey['parent_model']) + ' = ' + table + '.' + fkey['field'].name
+                        joins.append(where)                        
+
+        queryset = queryset.extra(tables=tables)
+        queryset = queryset.extra(where=joins)
+
+        return queryset
+        
+
     def apply(self, queryset=None, distinct=True):
         if queryset is None:
             queryset = trees[self.tree].get_queryset()
         if self.annotations:
             queryset = queryset.values('pk').annotate(**self.annotations)
         if self.condition:
-            queryset = queryset.filter(self.condition)
+            if isinstance(self.condition, dict):
+                queryset = queryset.extra(where=[self.condition['query']])
+                queryset = self.add_joins(queryset)
+            else:
+                queryset = queryset.filter(self.condition)
         if self.extra:
             queryset = queryset.extra(**self.extra)
         if distinct:
@@ -106,7 +195,6 @@ class Condition(Node):
             from avocado.models import DataField
             # Parse to get into a consistent format
             field_key = utils.parse_field_key(self.field_key)
-
             if self.concept:
                 self._field = self.concept.fields.get(**field_key)
             else:
@@ -143,8 +231,8 @@ class Branch(Node):
 
     def _combine(self, q1, q2):
         if self.type.upper() == OR:
-            return q1 | q2
-        return q1 & q2
+            return or_queries(q1, q2)
+        return and_queries(q1, q2)
 
     @property
     def condition(self):
@@ -219,9 +307,11 @@ def validate(attrs, **context):
             else:
                 cxt = DataContext.objects.get(id=attrs['composite'])
             validate(cxt.json, **context)
-            attrs['language'] = cxt.name
+            if not attrs['language']: attrs['language'] = cxt.name
+
         except DataContext.DoesNotExist:
             enabled = False
+            print 'DataContext does not exit'
             errors.append(u'DataContext "{0}" does not exist.'
                           .format(attrs['id']))
 
@@ -234,10 +324,11 @@ def validate(attrs, **context):
         try:
             if 'concept' in attrs:
                 concept = DataConcept.objects.get(id=attrs['concept'])
-                field = concept.fields.get(**field_key)
+                field = DataField.objects.get(**field_key)
             else:
                 field = DataField.objects.get(**field_key)
-            field.validate(operator=attrs['operator'], value=attrs['value'])
+            if not type(attrs['operator']) is list:
+                field.validate(operator=attrs['operator'], value=attrs['value'])
             node = parse(attrs, **context)
             attrs['language'] = node.language['language']
 
@@ -289,7 +380,9 @@ def validate(attrs, **context):
 
         except ObjectDoesNotExist:
             enabled = False
+            print 'Field does not exist'
             errors.append('Field does not exist')
+            raise
 
     elif is_branch(attrs):
         if attrs['type'] not in LOGICAL_OPERATORS:
@@ -314,6 +407,7 @@ def validate(attrs, **context):
 
 
 def parse(attrs, **context):
+
     if not attrs or attrs.get('enabled') is False:
         node = Node(**context)
     elif is_composite(attrs):
@@ -323,6 +417,7 @@ def parse(attrs, **context):
                                           user=context['user'])
         else:
             cxt = DataContext.objects.get(id=attrs['composite'])
+
         return parse(cxt.json, **context)
     elif is_condition(attrs):
         node = Condition(operator=attrs['operator'], value=attrs['value'],
@@ -331,4 +426,6 @@ def parse(attrs, **context):
     else:
         node = Branch(type=attrs['type'], **context)
         node.children = map(lambda x: parse(x, **context), attrs['children'])
+
+    
     return node

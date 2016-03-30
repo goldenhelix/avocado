@@ -41,6 +41,9 @@ def get_simple_type(internal):
     """
     if isinstance(internal, models.Field):
         internal = get_internal_type(internal)
+    else:
+        internal = internal.strip().lower()
+
     return settings.SIMPLE_TYPES.get(internal, internal)
 
 

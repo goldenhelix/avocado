@@ -1,7 +1,6 @@
 from warnings import warn
 from avocado.core import loader
 
-
 class BaseOperatorMetaclass(type):
     def __new__(cls, name, bases, attrs):
         new_cls = type.__new__(cls, name, bases, attrs)
@@ -149,11 +148,14 @@ class InsensitiveNotExact(InsensitiveExact):
 class Contains(StringOperator):
     lookup = 'contains'
     short_name = 'contains'
-    verbose_name = 'contains the text'
+    verbose_name = 'matches the text'
 
 
 class InsensitiveContains(Contains):
     lookup = 'icontains'
+
+class InsensitiveStartsWith(Contains):
+    lookup = 'istartswith'
 
 
 class NotContains(Contains):
@@ -261,6 +263,7 @@ registry.register(NotExact, NotExact.uid)
 registry.register(InsensitiveExact, InsensitiveExact.uid)
 registry.register(Contains, Contains.uid)
 registry.register(InsensitiveContains, InsensitiveContains.uid)
+registry.register(InsensitiveStartsWith, InsensitiveStartsWith.uid)
 registry.register(InsensitiveNotExact, InsensitiveNotExact.uid)
 registry.register(NotContains, NotContains.uid)
 registry.register(NotInsensitiveContains, NotInsensitiveContains.uid)

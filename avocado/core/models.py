@@ -1,6 +1,7 @@
 import logging
 from django.db import models
 from .managers import PublishedManager
+from django.utils import timezone
 
 log = logging.getLogger(__file__)
 
@@ -22,7 +23,7 @@ class Base(models.Model):
     # Descriptor-based fields
     name = models.CharField(max_length=200, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
-    keywords = models.CharField(max_length=100, null=True, blank=True)
+    keywords = models.TextField(null=True, blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
     modified = models.DateTimeField(auto_now=True)
@@ -43,6 +44,12 @@ class Base(models.Model):
             'description': self.description,
             'keywords': self.keywords,
         }
+
+    def save(self, *args, **kwargs):
+        if not self.id or not self.created:
+            self.created = timezone.now()
+        self.modified = timezone.now()
+        return super(Base, self).save(*args, **kwargs)
 
 
 class BasePlural(Base):

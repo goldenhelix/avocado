@@ -145,7 +145,9 @@ class Node(object):
         queryset = ModelTreeQuerySet(tree, query=queryset.query)
 
         # Set model fields for `select()` method
-        select = self._get_select(queryset.query.distinct)
+        select = [s for s in self._get_select(queryset.query.distinct) if s[1]]
+        if tree._nodes:
+            select = [s for s in select if s[0] in tree._nodes]
         queryset = queryset.select(*select, include_pk=include_pk)
 
         # Set the order by on the QuerySet

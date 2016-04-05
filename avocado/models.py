@@ -786,6 +786,8 @@ class DataConcept(BasePlural, PublishArchiveMixin):
     model_version_id = models.IntegerField(null=True)
 
     model_type = models.TextField(null=True)
+    
+    field_name = models.TextField(null=True)
 
     objects = managers.DataConceptManager()
 

@@ -38,6 +38,45 @@ def list_to_str(lst):
 
     return string
 
+def get_nested_parens(s):
+    openp = []
+    closep = []
+    for i in range(0, len(s)):
+        if s[i]=='(':
+            openp.append({'closed':False, 'i':i})
+            closep.append(-1)
+        if s[i]==')':
+            for j in xrange(len(openp)-1, 0-1, -1):
+                if openp[j]['closed']==False:
+                    closep[j] = i+1
+                    openp[j]['closed'] = True
+                    break
+        
+    groups = []
+    for i, paren in enumerate(openp):
+        closei = closep[i]
+        groups.append(s[paren['i']:closei])
+
+    return groups[::-1]
+
+
+# This function is some string hackery to allow all sample to be included in the query
+# even when a sample filter has been applied (TODO: Remove when new export is added)
+def fix_sample_queries(sql):
+    groups = get_nested_parens(sql)
+
+    for i, group in enumerate(groups):
+        if '.samples =' in group:
+            clauses = group.split('AND')
+            sample_clause = [c for c in clauses if '.samples =' in c][0]
+            sample_clause = sample_clause.strip().replace('(', '').replace(')', '')
+            inverse  = 'NOT ' + sample_clause
+            to_replace = group
+            replacement = ' '.join(['(', group, 'OR', inverse, ')'])
+            sql = sql.replace(to_replace, replacement)
+
+    return sql
+
 
 class VCFWriter(object):
     """
@@ -91,7 +130,6 @@ class VCFWriter(object):
         else:
             context = DataContext()
 
-
         # get the complete sample list
         query = 'select "samples" from ' + entity_table + ';'
         cursor = connection.cursor()
@@ -106,6 +144,19 @@ class VCFWriter(object):
         # construct the query associated with the current view and filter
         processor = QueryProcessor(context=context, view=view, tree=model_version['model_name'])
         queryset = processor.get_queryset(request=request)
+
+        # fix queries that include sample filters
+        # this is a hack that will be removed when 
+        # the export backend in replaced
+        children = queryset.query.where.children
+        for i, child in enumerate(children):
+            sqls = []
+            for sql in child.sqls:
+                sqls.append(fix_sample_queries(sql))
+            children[i].sqls = sqls
+        queryset.query.where.children = children
+
+            
         queryset.query.select.append((primary_table, 'start'))
         queryset.query.alias_map = get_alias_map(model_version['model_name'], queryset.query.alias_map) 
         matrix_join = (primary_table, matrix_table, '_id', '_id')
@@ -129,7 +180,7 @@ class VCFWriter(object):
         # execute the query
         compiler = queryset.query.get_compiler(using=queryset.db)
         sql, params = compiler.as_sql()
-        sql, params = base.prepare_query(sql, params, cursor)
+        #sql, params = base.prepare_query(sql, params, cursor)
 
 
         # prepare vcf writer
@@ -147,8 +198,10 @@ class VCFWriter(object):
         else:
             cursor.execute(sql, params)
             iterator = cursor.fetchall()
+
         for r in iterater:
             vcf_row = [r[i] for i in relevant_idxs]
+            start = vcf_row[vcf_header.index('start')]
 
             # iterate over the format fields in the row
             entity_id = r[queryset.query.select.index((matrix_table, '_entity_id'))]

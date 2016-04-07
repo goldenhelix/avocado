@@ -63,7 +63,7 @@ def and_queries(q1, q2):
 
 def negate_query(q):
     if isinstance(q, dict):
-        return {'models':q['models'], 'query':'NOT (' + q + ')' }
+        return {'models':q['models'], 'query':'NOT (' + q['query'] + ')' }
     else:
         return ~q
 

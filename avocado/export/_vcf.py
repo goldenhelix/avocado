@@ -11,6 +11,7 @@ from avocado.models import DataView, DataContext;
 from serrano.resources.base import prune_view_columns, get_alias_map
 from avocado.query.pipeline import QueryProcessor, queryset_iterator
 from django.db.backends.postgresql_psycopg2 import base
+from django.conf import settings
 from ceviche.utils import to_str, is_none
 
 
@@ -351,7 +352,9 @@ class VCFWriter(object):
 
     def init_writer(self, header, model_version_id, model_type, sample_names=[], format_fields=[]):
         template_lines = self.template_content(header, model_version_id, model_type, sample_names=sample_names, format_fields=format_fields)
-        template_fname = get_path("/vcf_templates/template_" + str(uuid.uuid4()) + ".vcf")
+        template_fname = settings.WAREHOUSE_PATH + "/tmp/template_" + str(uuid.uuid4()) + ".vcf"
+        if not os.path.exists(settings.WAREHOUSE_PATH + "/tmp/"):
+            os.makedirs(settings.WAREHOUSE_PATH + "/tmp/")
         f = open(template_fname, 'w')
         for line in template_lines:
             f.write(line + "\n")

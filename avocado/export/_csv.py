@@ -18,7 +18,7 @@ class UnicodeWriter(object):
         self.writer.writerow([s.encode("utf-8") if 'encode' in dir(s) else s for s in row])
 
     def row_to_str(self, row):
-        return ','.join([s.encode("utf-8").replace(',',';') if 'encode' in dir(s) else s for s in row])
+        return '\t'.join([s.encode("utf-8").replace(',',';') if 'encode' in dir(s) else s for s in row])
 
     def writerows(self, rows):
         for row in rows:
@@ -26,13 +26,13 @@ class UnicodeWriter(object):
 
 
 class CSVExporter(BaseExporter):
-    short_name = 'CSV'
-    long_name = 'Comma-Separated Values (CSV)'
+    short_name = 'TSV'
+    long_name = 'Tab-Separated Values (TSV)'
 
-    file_extension = 'csv'
-    content_type = 'text/csv'
+    file_extension = 'tsv'
+    content_type = 'text/tsv'
 
-    preferred_formats = ('csv', 'string')
+    preferred_formats = ('tsv', 'string')
 
     def generator(self, iterable, *args, **kwargs):
         header = []

@@ -115,7 +115,7 @@ class Node(object):
         for model in self.condition['models']:
             model_class = model
             table = model_class._meta.db_table
-            if table not in tables and not model==primary_table:
+            if table not in tables and not model==primary_table and table in str(queryset.query):
                 tables.append(table)
 
                 
@@ -125,9 +125,9 @@ class Node(object):
                     foreign = fkey['parent_model']._meta.db_table
 
                     # if foreign key joins to an included model
-                    if (foreign in model_names or foreign==primary_table) and not foreign==model:
+                    if (foreign in model_names or foreign==primary_table) and not foreign==model and foreign in str(queryset.query):
                         where = foreign + '.' + get_primary_key(fkey['parent_model']) + ' = ' + table + '.' + fkey['field'].name
-                        joins.append(where)                        
+                        joins.append(where)     
 
         queryset = queryset.extra(tables=tables)
         queryset = queryset.extra(where=joins)

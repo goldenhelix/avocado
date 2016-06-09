@@ -44,26 +44,47 @@ def is_composite(obj):
     if has_keys(obj, keys=COMPOSITE_KEYS):
         return True
 
-
 def or_queries(q1, q2):
     if isinstance(q1, dict) and isinstance(q2, dict):
-        models = q1['models'] + q2['models']
-        query =  '(' + q1['query'] + ' OR ' + q2['query'] + ')'
-        return {'models':models, 'query':query}
+        condition = {'models':q1['models'] + q2['models']}
+
+        for query_key in ['query', 'matrix_query']:
+            if query_key in q1 and query_key in q2:
+                condition[query_key] =  '(' + q1[query_key] + ' OR ' + q2[query_key] + ')'
+            elif query_key in q1:
+                condition[query_key] =  q1[query_key]
+            elif query_key in q2:
+                condition[query_key] =  q2[query_key]
+
+        return condition
     else:
         return q1 | q2
 
 def and_queries(q1, q2):
     if isinstance(q1, dict) and isinstance(q2, dict):
-        models = q1['models'] + q2['models']
-        query =  '(' + q1['query'] + ' AND ' + q2['query'] + ')'
-        return {'models':models, 'query':query}
+        condition = {'models':q1['models'] + q2['models']}
+
+        for query_key in ['query', 'matrix_query']:
+            if query_key in q1 and query_key in q2:
+                condition[query_key] =  '(' + q1[query_key] + ' AND ' + q2[query_key] + ')'
+            elif query_key in q1:
+                condition[query_key] =  q1[query_key]
+            elif query_key in q2:
+                condition[query_key] =  q2[query_key]
+
+        return condition
     else:
         return q1 & q2
 
 def negate_query(q):
     if isinstance(q, dict):
-        return {'models':q['models'], 'query':'NOT (' + q['query'] + ')' }
+        condition = {'models':q['models']}
+
+        for query_key in ['query', 'matrix_query']:
+            if query_key in q:
+                condition[query_key] = 'NOT (' + q[query_key] + ')'
+
+        return condition
     else:
         return ~q
 
@@ -104,20 +125,25 @@ class Node(object):
         self.tree = tree
         self.context = context
 
-    def add_joins(self, queryset):
+    def get_primary_table(self):
         if isinstance(self.tree, basestring):
-            primary_table = self.tree
+            return self.tree
         else:
-            primary_table = self.tree.__name__
+            return self.tree.__name__
+
+    def add_joins(self, queryset):
+        primary_table = self.get_primary_table()
+        matrix_table = primary_table + '_matrix'
+
         tables = []
         joins = []
         model_names = [model.__name__ for model in self.condition['models']]
         for model in self.condition['models']:
             model_class = model
             table = model_class._meta.db_table
-            if table not in tables and not model==primary_table and table in str(queryset.query):
-                tables.append(table)
+            if table not in tables and not model==primary_table and table in str(queryset.query) and not table==matrix_table:
 
+                tables.append(table)
                 
                 primary_key  = get_primary_key(model_class)
                 foreign_keys = get_foreign_keys(model_class)
@@ -142,7 +168,23 @@ class Node(object):
             queryset = queryset.values('pk').annotate(**self.annotations)
         if self.condition:
             if isinstance(self.condition, dict):
-                queryset = queryset.extra(where=[self.condition['query']])
+                # construct matrix table subclause
+                where_clause = self.condition.get('query', '')
+                if 'matrix_query' in self.condition:
+                    variant_table  =  self.get_primary_table()
+                    matrix_table   = variant_table + '_matrix'
+
+                    matrix_clause  = variant_table + '._id = ('
+                    matrix_clause += 'SELECT ' + matrix_table + '._id FROM ' + matrix_table + ' ' 
+                    matrix_clause += 'WHERE ' + self.condition['matrix_query'] + ' '
+                    matrix_clause += 'AND ' + variant_table + '._id = ' + matrix_table + '._id '
+                    matrix_clause += 'LIMIT 1)'
+                    if where_clause:
+                        where_clause = ' AND '.join([matrix_clause, where_clause])
+                    else:
+                        where_clause = matrix_clause 
+
+                queryset = queryset.extra(where=[where_clause])
                 queryset = self.add_joins(queryset)
             else:
                 queryset = queryset.filter(self.condition)
@@ -233,6 +275,7 @@ class Branch(Node):
         if self.type.upper() == OR:
             return or_queries(q1, q2)
         return and_queries(q1, q2)
+
 
     @property
     def condition(self):

@@ -175,7 +175,7 @@ class Node(object):
             if isinstance(self.condition, dict):
                 # construct matrix table subclause
                 where_clause = self.condition.get('query', '')
-                for sub_query in self.condition['sub_queries']:
+                for sub_query in self.condition.get('sub_queries', []):
                     variant_table  =  self.get_primary_table()
                     matrix_table   = variant_table + '_matrix'
 

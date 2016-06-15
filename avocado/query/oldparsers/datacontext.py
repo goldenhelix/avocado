@@ -62,11 +62,16 @@ def or_queries(q1, q2):
 
 def and_queries(q1, q2):
     if isinstance(q1, dict) and isinstance(q2, dict):
-        condition = {'models':q1['models'] + q2['models']}
+        condition = {'models':q1['models'] + q2['models'], 'is_sample_query':False}
+        condition['sub_queries'] = q1.get('sub_queries', []) + q2.get('sub_queries', [])
 
         for query_key in ['query', 'matrix_query']:
             if query_key in q1 and query_key in q2:
                 condition[query_key] =  '(' + q1[query_key] + ' AND ' + q2[query_key] + ')'
+
+                # queries on sample id will become subqueries
+                if q1.get('is_sample_query') or q2.get('is_sample_query'):
+                    condition['sub_queries'].append(condition[query_key])
             elif query_key in q1:
                 condition[query_key] =  q1[query_key]
             elif query_key in q2:
@@ -170,13 +175,13 @@ class Node(object):
             if isinstance(self.condition, dict):
                 # construct matrix table subclause
                 where_clause = self.condition.get('query', '')
-                if 'matrix_query' in self.condition:
+                for sub_query in self.condition['sub_queries']:
                     variant_table  =  self.get_primary_table()
                     matrix_table   = variant_table + '_matrix'
 
                     matrix_clause  = variant_table + '._id = ('
                     matrix_clause += 'SELECT ' + matrix_table + '._id FROM ' + matrix_table + ' ' 
-                    matrix_clause += 'WHERE ' + self.condition['matrix_query'] + ' '
+                    matrix_clause += 'WHERE ' + sub_query + ' '
                     matrix_clause += 'AND ' + variant_table + '._id = ' + matrix_table + '._id '
                     matrix_clause += 'LIMIT 1)'
                     if where_clause:

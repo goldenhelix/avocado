@@ -430,7 +430,7 @@ class DataField(BasePlural, PublishArchiveMixin):
     # Convenience Methods
     # Easier access to the underlying data for this data field
 
-    def values_list(self, order=True, distinct=True, queryset=None):
+    def values_list(self, order=False, distinct=True, queryset=None):
         "Returns a `ValuesListQuerySet` of values for this field."
         value_field = self.value_field.name
         order_field = self.order_field.name
@@ -448,7 +448,7 @@ class DataField(BasePlural, PublishArchiveMixin):
 
         return queryset
 
-    def labels_list(self, order=True, distinct=True, queryset=None):
+    def labels_list(self, order=False, distinct=False, queryset=None):
         "Returns a `ValuesListQuerySet` of labels for this field."
         label_field = self.label_field.name
         order_field = self.order_field.name

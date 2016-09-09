@@ -243,7 +243,10 @@ class Range(ContainerTypeOperator):
 
     def text(self, value):
         value = map(self.coerce_to_unicode, value)
-        return u'{0} {1}'.format(self.verbose_name, ' and '.join(value))
+        if len(value)==1 or value[0]==value[1]:
+            return 'equals ' + str(value[0])
+        else:
+            return u'{0} {1}'.format(self.verbose_name, ' and '.join(value))
 
 
 class NotRange(Range):

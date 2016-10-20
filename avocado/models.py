@@ -557,7 +557,7 @@ class DataField(BasePlural, PublishArchiveMixin):
 
     def value_labels(self, queryset=None):
         "Returns a distinct set of value/label pairs for this field."
-        if self.type=='Boolean':
+        if self.type=='Boolean' or self.type=='Boolean Array':
             d = ChoicesDict(zip([True, False], ['True', 'False']))
             return d
         if self.allowed_values:

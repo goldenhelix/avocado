@@ -117,7 +117,7 @@ class NotNull(Null):
 class Exact(SimpleTypeOperator):
     lookup = 'exact'
     short_name = '='
-    verbose_name = 'is'
+    verbose_name = 'matches the text'
 
 
 class NotExact(Exact):
@@ -136,19 +136,19 @@ class NotExact(Exact):
 class InsensitiveExact(StringOperator):
     lookup = 'iexact'
     short_name = '='
-    verbose_name = 'is'
+    verbose_name = 'matches the text'
 
 
 class InsensitiveNotExact(InsensitiveExact):
     short_name = '!='
-    verbose_name = 'is not'
+    verbose_name = 'does not match'
     negated = True
 
 
 class Contains(StringOperator):
     lookup = 'contains'
     short_name = 'contains'
-    verbose_name = 'matches the text'
+    verbose_name = 'contains the text'
 
 
 class InsensitiveContains(Contains):

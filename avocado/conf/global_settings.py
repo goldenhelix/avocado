@@ -18,7 +18,7 @@ SIMPLE_TYPES = {
     'smallinteger': 'number',
 
     'nullboolean': 'boolean',
-    'string array': 'string',
+    'string array': 'stringarray',
     'boolean array': 'boolean',
     'char': 'string',
     'email': 'string',
@@ -59,6 +59,8 @@ OPERATORS = {
                'icontains', '-icontains', 'istartswith', 'iregex', '-iregex'),
     'string': ('exact', '-exact', 'iexact', '-iexact', 'in', '-in',
                'icontains', '-icontains', 'istartswith', 'iregex', '-iregex'),
+    'stringarray': ('exact', '-exact', 'iexact', '-iexact', 'in', '-in',
+                    'iregex', '-iregex'),
     'choice': ('exact', '-exact', 'iexact', '-iexact', 'in', '-in',
                'icontains', '-icontains', 'istartswith', 'iregex', '-iregex'),
     'datetime': ('exact', '-exact', 'in', '-in', 'lt', 'lte', 'gt', 'gte',

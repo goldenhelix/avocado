@@ -44,7 +44,7 @@ class CSVExporter(BaseExporter):
 
             for data in row_gen:
                 if i == 0:
-                    header.extend(data.keys())
+                    header.extend([self.title_map[k] for k in data.keys()])
 
                 row.extend(data.values())
 

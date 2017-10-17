@@ -20,6 +20,10 @@ def get_allowed_value_map(model_version_id):
     allowed_value_map = {f.field_name:f.allowed_values for f in DataField.objects.filter(model_version_id=model_version_id)}
     return allowed_value_map
 
+def get_title_map(model_version_id):
+    tmap = {f.field_name:f.name for f in DataField.objects.filter(model_version_id=model_version_id)}
+    return tmap
+
 class BaseExporter(object):
     "Base class for all exporters"
     file_extension = 'txt'
@@ -35,6 +39,7 @@ class BaseExporter(object):
 
         self.type_map = {}
         self.allowed_value_map = {}
+        self.title_map = {}
         self.params = []
         self.row_length = 0
         self.concepts = concepts
@@ -75,7 +80,6 @@ class BaseExporter(object):
         
         for formatter, length in self.params:
             values, row = row[:length], row[length:]
-            
             yield formatter(values, preferred_formats=self.preferred_formats,
                             **kwargs)
 
@@ -150,6 +154,7 @@ class BaseExporter(object):
             model_type = kwargs['model_type']
             self.type_map = get_type_map(model_version_id, model_type)
             self.allowed_value_map = get_allowed_value_map(model_version_id)
+            self.title_map = get_title_map(model_version_id)
         else:
             model_version_id = None
 

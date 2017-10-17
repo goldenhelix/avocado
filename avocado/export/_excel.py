@@ -35,7 +35,7 @@ class ExcelExporter(BaseExporter):
             for data in row_gen:
                 if i == 0:
                     # Build up header row
-                    header.extend(data.keys())
+                    header.extend([self.title_map[k] for k in data.keys()])
 
                 # Add formatted section to the row
                 row.extend(data.values())

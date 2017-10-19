@@ -679,7 +679,7 @@ class DataField(BasePlural, PublishArchiveMixin):
 
     def get_tree(self):
         tree = 'projectsample'
-        if self.model_name.startswith('p_') or self.model_name.startswith('r_'):
+        if self.model_name.startswith('p_') or self.model_name.startswith('r_') or self.model_name.startswith('c_'):
             tree = self.model_name
         elif self.model_name=='samplerecordschema':
             tree = 'projectsample'

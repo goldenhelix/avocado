@@ -233,6 +233,8 @@ class VCFWriter(object):
         if 'pos_start' in header: pos = int(row[header.index('pos_start')])
         elif 'start' in header: pos = int(row[header.index('start')])
         else: pos = -1
+        
+        info = {}
 
         if 'ref_alts' in header: 
             ref = row[header.index('ref_alts')].split('/')[0]
@@ -241,10 +243,14 @@ class VCFWriter(object):
             ref = row[header.index('refalt')].split('/')[0]
             alts = row[header.index('refalt')].split('/')[1:]
         else: 
-            ref = '.'
-            alts = '.'
+            ref = 'N'
+            alts = ['<Region>']
+            if 'stop' in header:
+                info['END'] = row[header.index('stop')]
+            elif 'pos_stop' in header:
+                info['END'] = row[header.index('pos_stop')]
 
-        info = {}
+        
         for label in header:
             if label=='_id':
                 continue

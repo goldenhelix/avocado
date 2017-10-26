@@ -9,11 +9,16 @@ def get_type_map(model_version_id, model_type):
     elif model_type=='project':
         type_map = {'chr':'String',	'start':'Integer',	'stop':'Integer', 'refalt':'String'}
     else:
-        type_map = {'chr':'String',	'pos_start':'Integer',	'pos_stop':'Integer', 'ref_alts':'String'}
+        ref_alt = DataField.objects.filter(model_version_id=model_version_id, field_name='ref_alts')
+        if ref_alt.exists():
+            type_map = {'chr':'String',	'pos_start':'Integer',	'pos_stop':'Integer', 'ref_alts':'String'}
+        else:
+            type_map = {'chr':'String',	'pos_start':'Integer',	'pos_stop':'Integer'}
 
     results = DataField.objects.filter(model_version_id=model_version_id)
     for result in results:
         type_map[result.field_name] = result.type
+
     return type_map
 
 def get_allowed_value_map(model_version_id):

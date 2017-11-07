@@ -83,14 +83,14 @@ class DataConceptQuerySet(PublishedQuerySet):
         Also, concepts with an unpublished category are not visible. Finally,
         concepts with no fields are not considered visible.
         """
+        from avocado.models import DataField
         published = super(DataConceptQuerySet, self).published()
 
         # Remove internal
         published = published.exclude(internal=True)
 
         # All published concepts associated with the current site
-        # (or no site)
-
+        # (or no site)       
         sites = Q(sites=None) | Q(sites__id=djsettings.SITE_ID)
         published = published.filter(sites)
 
@@ -101,9 +101,7 @@ class DataConceptQuerySet(PublishedQuerySet):
 
         # Concepts that contain at least one unpublished or archived datafield
         # are removed from the set to prevent exposing unprepared data
-        from avocado.models import DataField
-
-        fields_q = Q(archived=True) | Q(published=False)
+        fields_q = Q(archived=True)
         
         # concepts are hidden if they meet these criteria
         if model_version_id:
@@ -124,7 +122,7 @@ class DataConceptQuerySet(PublishedQuerySet):
                                            'to use the permissions system')
 
         shadowed = DataField.objects.filter(fields_q)
-
+        
         concepts = published.exclude(fields__in=shadowed) \
             .exclude(fields=None).distinct()
 

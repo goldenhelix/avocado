@@ -274,6 +274,10 @@ class DataField(BasePlural, PublishArchiveMixin):
             except FieldDoesNotExist:
                 pass
 
+            for field in self.real_model._meta.get_fields_with_model():
+                if field[0].db_column == self.field_name:
+                    return field[0]
+
     @property
     def model(self):
         "Returns the model class this datafield represents."
